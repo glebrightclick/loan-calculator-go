@@ -12,5 +12,5 @@ func main() {
 	)
 
 	// Write your code solution for the project below.
-	fmt.Println("Hello, World!")
+	fmt.Printf("%s\n%s\n%s\n%s\n%s\n", loanPrincipal, firstMonth, secondMonth, thirdMonth, finalOutput)
 }
