@@ -14,8 +14,19 @@ files:
     learner_created: false
 feedback_link: https://hyperskill.org/learn/step/41830#comment
 check_profile: hyperskill_go
-status: Solved
+status: Failed
 feedback:
-  message: <html>Correct solution</html>
-  time: "Thu, 18 Jul 2024 09:30:12 UTC"
-record: -1
+  message: |-
+    Wrong answer in test #1
+
+    No numbers in the answer
+
+    Please find below the output of your program during this failed test.
+
+    ---
+
+    Arguments: --principal=1000000 --periods=60 --interest=10
+
+    Incorrect parameters
+  time: "Thu, 18 Jul 2024 10:21:30 UTC"
+record: 3

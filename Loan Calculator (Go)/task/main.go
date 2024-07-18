@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"math"
 )
 
@@ -35,28 +34,75 @@ func (c *calculator) getLastPayment() float64 {
 
 func (c *calculator) calculatePrincipal() {
 	i := c.getMonthlyInterestRate()
-	c.principal = c.payment * (math.Pow(1+i, c.numberOfPayments) - 1) / (i * math.Pow(1+i, c.numberOfPayments))
+	c.principal = math.Floor(c.payment * (math.Pow(1+i, c.numberOfPayments) - 1) / (i * math.Pow(1+i, c.numberOfPayments)))
 }
+
+func (c *calculator) getDifferentiatedPayment(month int) float64 {
+	i := c.getMonthlyInterestRate()
+	return math.Ceil(c.principal/c.numberOfPayments + i*(c.principal-c.principal*(float64(month)-1)/c.numberOfPayments))
+}
+
+// The only thing left is to compute the overpayment: the amount of interest paid over the whole term of the loan.
 
 func main() {
 	initValue := 0.00
 	calc := calculator{}
+	var calculationType string
 
 	flag.Float64Var(&calc.principal, "principal", initValue, "loan principal")
-	flag.Float64Var(&calc.payment, "payment", initValue, "loan principal")
-	flag.Float64Var(&calc.numberOfPayments, "periods", initValue, "loan principal")
-	flag.Float64Var(&calc.interest, "interest", initValue, "loan principal")
+	flag.Float64Var(&calc.payment, "payment", initValue, "monthly payment")
+	flag.Float64Var(&calc.numberOfPayments, "periods", initValue, "number of payments")
+	flag.Float64Var(&calc.interest, "interest", initValue, "interest rate")
+	flag.StringVar(&calculationType, "type", "", "type of calculation")
 	flag.Parse()
 
-	switch initValue {
-	case calc.payment:
-		processMonthlyPayment(calc)
-	case calc.principal:
-		processPrincipal(calc)
-	case calc.numberOfPayments:
-		processNumberOfMonthlyPayments(calc)
-	case calc.interest:
-		log.Fatal("Not yet implemented")
+	switch calculationType {
+	case "diff":
+		emptyValues, incorrectValues := 0, 0
+		for _, value := range []float64{calc.principal, calc.numberOfPayments, calc.interest} {
+			if value == initValue {
+				emptyValues++
+			}
+			if value < initValue {
+				incorrectValues++
+			}
+		}
+		if emptyValues > 1 || incorrectValues > 0 {
+			fmt.Println("Incorrect parameters")
+			return
+		}
+
+		processDifferentiatedPayment(calc)
+	case "annuity":
+		// calculate empty and incorrect values
+		emptyValues, incorrectValues := 0, 0
+		for _, value := range []float64{calc.payment, calc.principal, calc.numberOfPayments} {
+			if value == initValue {
+				emptyValues++
+			}
+			if value < initValue {
+				incorrectValues++
+			}
+		}
+		// if we have more than one empty value, or we have any incorrect values, return error message
+		if calc.interest <= initValue {
+			incorrectValues++
+		}
+		if emptyValues > 1 || incorrectValues > 0 {
+			fmt.Println("Incorrect parameters")
+			return
+		}
+
+		switch initValue {
+		case calc.payment:
+			processMonthlyPayment(calc)
+		case calc.principal:
+			processPrincipal(calc)
+		case calc.numberOfPayments:
+			processNumberOfMonthlyPayments(calc)
+		}
+	default:
+		fmt.Println("Incorrect parameters")
 	}
 }
 
@@ -92,19 +138,15 @@ func processNumberOfMonthlyPayments(calc calculator) {
 
 		fmt.Printf("It will take %s and %s to repay the loan\n", yearsPart, monthsPart)
 	}
+	fmt.Printf("Overpayment = %0.f\n", calc.payment*calc.numberOfPayments-calc.principal)
 }
 
 func processMonthlyPayment(calc calculator) {
 	// perform calculation
 	calc.calculatePayment()
-	// get last month payment
-	lastMonthPayment := calc.payment // calc.getLastPayment()
 	// display result
-	if lastMonthPayment != calc.payment {
-		fmt.Printf("Your monthly payment = %0.f and the last payment = %0.f.\n", calc.payment, lastMonthPayment)
-	} else {
-		fmt.Printf("Your monthly payment = %0.f!\n", calc.payment)
-	}
+	fmt.Printf("Your annuity payment = %0.f!\n", calc.payment)
+	fmt.Printf("Overpayment = %0.f\n", calc.payment*calc.numberOfPayments-calc.principal)
 }
 
 func processPrincipal(calc calculator) {
@@ -112,4 +154,19 @@ func processPrincipal(calc calculator) {
 	calc.calculatePrincipal()
 	// display result
 	fmt.Printf("Your loan principal = %0.f!\n", calc.principal)
+	fmt.Printf("Overpayment = %0.f\n", calc.payment*calc.numberOfPayments-calc.principal)
+}
+
+func processDifferentiatedPayment(calc calculator) {
+	// perform calculation
+	total := 0.00
+	for i := 1; i <= int(calc.numberOfPayments); i++ {
+		// calculate differentiated payment
+		differentiatedPayment := calc.getDifferentiatedPayment(i)
+
+		fmt.Printf("Month %d: payment is %0.f\n", i, differentiatedPayment)
+		total += differentiatedPayment
+	}
+
+	fmt.Printf("\nOverpayment = %0.f\n", total-calc.principal)
 }
