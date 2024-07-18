@@ -11,93 +11,87 @@ class LoanCalcTest(StageTest):
     def generate(self):
         return [
             TestCase(
-                stdin='1000\nm\n200',
-                attach=(5, 'months'),
+                args=['--principal=1000000', '--periods=60', '--interest=10'],
+                attach=21248
             ),
             TestCase(
-                stdin='1000\nm\n150',
-                attach=(7, 'months'),
+                args=['--principal=1000000', '--periods=8', '--interest=9.8'],
+                attach=129638
             ),
             TestCase(
-                stdin='1000\nm\n1000',
-                attach=(1, 'month'),
+                args=['--principal=3000000', '--periods=302', '--interest=11.2'],
+                attach=29803
             ),
             TestCase(
-                stdin='1000\np\n10',
-                attach=100,
+                args=['--principal=500000', '--payment=23000', '--interest=7.8'],
+                attach=[2, 0]
             ),
             TestCase(
-                stdin='1000\np\n9',
-                attach=['112', '104'],
+                args=['--principal=700000', '--payment=26000', '--interest=9.1'],
+                attach=[2, 7]
             ),
             TestCase(
-                stdin='1350\nm\n140',
-                attach=(10, 'months'),
+                args=['--payment=8721.8', '--periods=120', '--interest=5.6'],
+                attach=(800000,)
             ),
             TestCase(
-                stdin='300\nm\n400',
-                attach=(1, 'month'),
-            ),
-            TestCase(
-                stdin='5555\np\n11',
-                attach=505,
-            ),
-            TestCase(
-                stdin='5576\np\n10',
-                attach=['558', '554'],
-            ),
+                args=['--payment=6898.02', '--periods=240', '--interest=3.4'],
+                attach=(1200001,)
+            )
         ]
 
     def check(self, reply, attach):
-        reply = reply.lower()
+        numbers = re.findall(r'[-+]?(\d*\.\d+|\d+)', reply)
+        if len(numbers) == 0:
+            return CheckResult.wrong(
+                'No numbers in the answer',
+            )
+
         if isinstance(attach, tuple):
-            a, b = attach
-            if a == 1:
-                if '1 months' in reply.splitlines()[-1]:
-                    output = '{0} should be in the output, but you have output {1}.\n' \
-                             'Please use the singular form of the word "month" in this case.'
-                    return CheckResult.wrong(
-                        output.format('1 month', '1 months'),
-                    )
+            for i in numbers:
+                if abs(attach[0] - float(i)) < 2:
+                    return CheckResult.correct()
+            output = 'Numbers in your answer: ' + ' '.join(numbers)
+            output += '. But correct principal is {0}'.format(attach[0])
+            return CheckResult.wrong(output)
 
-            if str(a) not in reply or b not in reply.lower():
+        if isinstance(attach, list):
+            # to exclude answers like 'it takes 2.01 years'
+            # but 'it takes 2.0 years' let it be OK.
+            epsilon = 0.00001
+            numbers = [
+                int(float(x)) for x in numbers
+                if abs(int(float(x)) - float(x)) < epsilon
+            ]
+            if attach[1] == 0:
+                if 'year' in reply.lower() and attach[0] in numbers:
+                    return CheckResult.correct()
+
+                output = 'Correct result: {0} years, but you output "{1}"'
+                return CheckResult.wrong(
+                    output.format(attach[0], reply),
+                )
+            else:
+                if attach[0] in numbers and 'year' in reply.lower():
+                    if attach[1] in numbers and 'month' in reply.lower():
+                        return CheckResult.correct()
+
                 output = (
-                    '"{0} {1}" should be in the output, but you output {2}'
+                    'Correct result: {0} years {1} months, '
+                    'but you output "{2}"'
                 )
                 return CheckResult.wrong(
-                    output.format(a, b, reply),
+                    output.format(attach[0], attach[1], reply),
                 )
 
-        elif isinstance(attach, list):
-            if attach[0] not in reply or attach[1] not in reply:
-                numbers = re.findall(r'[-+]?(\d*\.\d+|\d+)', reply)
-                if len(numbers) == 0:
-                    output = (
-                        'The correct monthly payment is {0}, and the last payment is'
-                        ' {1}, but there are no numbers in your output'
-                        .format(attach[0], attach[1])
-                    )
-                elif len(numbers) == 1:
-                    output = (
-                        'The correct monthly payment is {0}, and the last payment is'
-                        ' {1}, but there is only {2} in your output'
-                        .format(attach[0], attach[1], numbers[0])
-                    )
-                else:
-                    output = (
-                        'The correct monthly payment is {0}, and the last payment is'
-                        ' {1}, but there are {2} and {3} in your output'
-                        .format(attach[0], attach[1], numbers[0], numbers[1])
-                    )
-                return CheckResult.wrong(output)
-        else:
-            if str(attach) not in reply:
-                output = (
-                    'The correct monthly payment is {0}. But in your output it is {1}'
-                )
-                return CheckResult.wrong(
-                    output.format(attach, reply),
-                )
+        if str(attach) not in reply.lower():
+            output = (
+                'Correct annuity payment is {0} but you output numbers: {1}'
+            )
+            figures = ' '.join(numbers)
+            return CheckResult.wrong(
+                output.format(attach, figures),
+            )
 
         return CheckResult.correct()
 
