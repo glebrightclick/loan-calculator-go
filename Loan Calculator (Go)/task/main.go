@@ -7,24 +7,20 @@ import (
 
 type calculator struct {
 	loanPrincipal  float64
-	months         int
+	months         float64
 	monthlyPayment float64
 }
 
 func (c *calculator) calculateMonths() {
-	months := c.loanPrincipal / c.monthlyPayment
-	c.months = int(months)
-	if float64(int(months)) != months {
-		c.months++
-	}
+	c.months = math.Ceil(c.loanPrincipal / c.monthlyPayment)
 }
 
 func (c *calculator) calculateMonthlyPayment() {
-	c.monthlyPayment = math.Ceil(c.loanPrincipal / float64(c.months))
+	c.monthlyPayment = math.Ceil(c.loanPrincipal / c.months)
 }
 
 func (c *calculator) getLastMonthPayment() float64 {
-	return c.loanPrincipal - c.monthlyPayment*float64(c.months-1)
+	return c.loanPrincipal - c.monthlyPayment*(c.months-1.00)
 }
 
 func main() {
@@ -45,7 +41,7 @@ func main() {
 	case "m":
 		processNumberOfMonthlyPayments(calculator)
 	case "p":
-		processMontlyPayment(calculator)
+		processMonthlyPayment(calculator)
 	default:
 		fmt.Println("Incorrect option")
 	}
@@ -63,7 +59,7 @@ func processNumberOfMonthlyPayments(calculator calculator) {
 	}
 }
 
-func processMontlyPayment(calculator calculator) {
+func processMonthlyPayment(calculator calculator) {
 	fmt.Println("Enter the number of months:")
 	fmt.Scan(&calculator.months)
 	calculator.calculateMonthlyPayment()
